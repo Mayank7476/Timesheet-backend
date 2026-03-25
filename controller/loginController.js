@@ -1,8 +1,10 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../model/user");
+const rateLimiter=require("express-rate-limit");
+const LoginLimiter=rateLimiter({windowMs:5*60*1000,max:10});
 
-exports.login=async(req,res)=>{
+exports.login=[LoginLimiter,async(req,res)=>{
  const { email, password } = req.body;
 
   // Validate
@@ -12,7 +14,8 @@ exports.login=async(req,res)=>{
 
   try {
     // Find user
-    const user = await User.findOne({ email });
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email:cleanEmail });
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
@@ -31,6 +34,7 @@ exports.login=async(req,res)=>{
       { expiresIn: "1h" }
     );
 
+    
     // Send response
     res.status(200).json({
       message: "Login successful",
@@ -41,4 +45,4 @@ exports.login=async(req,res)=>{
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
-}
+}];

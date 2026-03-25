@@ -1,7 +1,12 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const compression=require("compression");
+const morgan=require("morgan");
+const rateLimiter=require("express-rate-limit");
+const apiLimiter=rateLimiter({windowMs:15*60*1000,max:100});
 const connectDB = require("./config/db");
+const helmet=require("helmet");
 const passport=require("./config/passport")
 const signupRoutes = require("./routes/auth");
 const loginRoutes=require("./routes/auth");
@@ -17,19 +22,20 @@ const report=require("./routes/report");
 const samlRoutes = require("./routes/saml");
 const app = express();
 
-// Connect MongoDB
 connectDB();
-
+app.use(compression());
+app.use(morgan('combined'));
 app.use(
   cors({
-    origin: ["http://localhost:5173",
-      "https://unworshiping-roaringly-ayesha.ngrok-free.dev"
-    ], // frontend
+    origin: [process.env.FRONTEND_URL], // frontend
     credentials: true,
   })
 );
 app.use(express.json());
+app.use(helmet());
+app.use('/api',apiLimiter);
 app.use(passport.initialize());
+
 
 // GET API
 app.get("/api/hello", (req, res) => {
@@ -49,7 +55,17 @@ app.use("/api/group",groupRou);
 app.use("/api/user",users);
 app.use("/api/report",report);
 app.use("/auth/saml", samlRoutes);
+
+
+
+app.use((err, req, res, next) => {
+  console.error('Global catch:', err);
+  res.status(err.status || 500).json({ 
+    message: err.message || 'Server error' 
+  });
+});
 app.listen(5000, () => {
   console.log("Server running on port 5000");
 });
+module.exports=app;
 
