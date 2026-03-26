@@ -12,8 +12,8 @@ exports.saveCurrentWeekTimesheet = async (req, res) => {
     const weekStart = new Date(monday);
 const weekEnd = new Date(sunday);
 
-weekStart.setHours(0,0,0,0);
-weekEnd.setHours(23,59,59,999);
+weekStart.setUTCHours(0,0,0,0);
+weekEnd.setUTCHours(23,59,59,999);
 
     // ✅ Validate
     if (!Array.isArray(entries)) {
@@ -81,7 +81,7 @@ exports.submitCurrentWeekTimesheet = async (req, res) => {
     
 
     const currentWeekStart = new Date(monday);
-    currentWeekStart.setHours(0,0,0,0);
+    currentWeekStart.setUTCHours(0,0,0,0);
 
     // 🔎 Find last submitted week
     const lastSubmitted = await TimeSheet.findOne({
@@ -92,13 +92,9 @@ exports.submitCurrentWeekTimesheet = async (req, res) => {
     // ✅ CASE 1 — No previous submission
    if (!lastSubmitted) {
   const doj = new Date(user.DOJ);
+  doj.setUTCHours(0,0,0,0);
   const weekEnd = new Date(currentWeekStart);
-  weekEnd.setDate(weekEnd.getDate() + 6);
-
-  // const isSameDate = (d1, d2) =>
-  //   d1.getFullYear() === d2.getFullYear() &&
-  //   d1.getMonth() === d2.getMonth() &&
-  //   d1.getDate() === d2.getDate();
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
 
   if (!(doj >= currentWeekStart && doj <= weekEnd))  {
    
@@ -111,7 +107,7 @@ exports.submitCurrentWeekTimesheet = async (req, res) => {
 
     else {
       const nextAllowedWeek = new Date(lastSubmitted.weekStartDate);
-      nextAllowedWeek.setDate(nextAllowedWeek.getDate() + 7);
+      nextAllowedWeek.setUTCDate(nextAllowedWeek.getUTCDate() + 7);
 
       // ❌ Block previous week
       if (currentWeekStart < nextAllowedWeek) {
@@ -132,6 +128,12 @@ exports.submitCurrentWeekTimesheet = async (req, res) => {
          userId,
          weekStartDate: currentWeekStart,
        });
+
+       if (!timesheet) {
+  return res.status(404).json({
+    message: "Timesheet not found for this week",
+  });
+}
    
        // ✅ Submit
        timesheet.status = status;
@@ -163,22 +165,15 @@ exports.getWeekTimesheet=async (req,res) => {
     const weekStart=new Date(monday);
     const weekEnd=new Date(sunday);
 
-    weekStart.setHours(0,0,0,0);
-    weekEnd.setHours(23,59,59,999);
+    weekStart.setUTCHours(0,0,0,0);
+    weekEnd.setUTCHours(23,59,59,999);
     const user=await User.findById(userId).populate("assignedProjects",
       "projectName projectCode");
 
     const timesheet = await TimeSheet.findOne({
       userId,
       weekStartDate: weekStart,
-      weekEndDate: weekEnd,
     }).populate("entries.projectId", "projectName projectCode");
-
-    if(!timesheet){
-      return res.status(404).json({
-        message:"timesheet not found",
-      });
-    }
 
     if (timesheet) {
       return res.json({
@@ -235,14 +230,14 @@ exports.getInitialWeek = async (req, res) => {
     } else {
       // ✅ Found → go to next week after last submitted
       startWeek = new Date(lastSubmitted.weekStartDate);
-      startWeek.setDate(startWeek.getDate() + 7);
+      startWeek.setUTCDate(startWeek.getUTCDate() + 7);
     }
 
     // 🔁 Convert to Monday of that week
-    const day = startWeek.getDay();
-    const diff = startWeek.getDate() - day + (day === 0 ? -6 : 1);
-    startWeek.setDate(diff);
-    startWeek.setHours(0, 0, 0, 0);
+    const day = startWeek.getUTCDay();
+    const diff = startWeek.getUTCDate() - day + (day === 0 ? -6 : 1);
+    startWeek.setUTCDate(diff);
+    startWeek.setUTCHours(0, 0, 0, 0);
 
     res.status(200).json({
       weekStart: startWeek,
