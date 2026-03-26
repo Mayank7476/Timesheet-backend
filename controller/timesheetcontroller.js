@@ -81,6 +81,7 @@ exports.submitCurrentWeekTimesheet = async (req, res) => {
     
 
     const currentWeekStart = new Date(monday);
+    currentWeekStart.setHours(0,0,0,0);
 
     // 🔎 Find last submitted week
     const lastSubmitted = await TimeSheet.findOne({
@@ -172,6 +173,12 @@ exports.getWeekTimesheet=async (req,res) => {
       weekStartDate: weekStart,
       weekEndDate: weekEnd,
     }).populate("entries.projectId", "projectName projectCode");
+
+    if(!timesheet){
+      return res.status(404).json({
+        message:"timesheet not found",
+      });
+    }
 
     if (timesheet) {
       return res.json({
